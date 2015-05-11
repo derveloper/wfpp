@@ -11,12 +11,14 @@
 #include <boost/any.hpp>
 #include <map>
 #include <iostream>
+#include <functional>
 
 #include "ext/json.hpp"
 
 #include "lwan.h"
 #include "lwan-serve-files.h"
 #include "lwan-template.h"
+
 
 namespace wfpp {
     using json = nlohmann::json;
@@ -32,9 +34,8 @@ namespace wfpp {
     struct view : view_object {
         response _response;
 
-        view(lwan_response_t *resp) : _response(resp) { };
-        lwan_http_status_t render(const std::string &view_name,
-                                const view_object &obj, const lwan_http_status_t &status = HTTP_OK) {
+        view(response &resp) : _response(resp) { };
+        lwan_http_status_t render(const view_object &obj, const lwan_http_status_t &status = HTTP_OK) {
 
             _response.lwan_response->mime_type = "application/json";
 
@@ -53,13 +54,19 @@ namespace wfpp {
             lwan_init(&l);
         }
 
-        constexpr void get(const char *route,
-                           lwan_http_status_t (*handler)(lwan_request_t *, lwan_response_t *, void *)) {
-            url_map.push_back((lwan_url_map_t) {.prefix = (char *) route, .handler = handler});
-            std::cout << "added " + std::string(route) << std::endl;
+        template<typename handler_fn>
+        void get(const char *route, handler_fn &&handler) {
+            thread_local handler_fn _h = std::move(handler);
+            using lwan_handler_t = lwan_http_status_t (*)(lwan_request_t *, lwan_response_t *, void *);
+            lwan_handler_t lwan_handler = [](lwan_request_t *req, lwan_response_t *res, void *data)
+                    -> lwan_http_status_t {
+                return _h(req, std::move(response(res)), data);
+            };
+            url_map.push_back((lwan_url_map_t) {.prefix = (char *) route, .handler = lwan_handler});
         }
 
         constexpr void run() {
+            url_map.push_back(lwan_url_map_t {.prefix = (char*)"/", SERVE_FILES((char*)"./wwwroot")});
             url_map.push_back(lwan_url_map_t {.prefix = NULL});
             lwan_set_url_map(&l, url_map.data());
             lwan_main_loop(&l);

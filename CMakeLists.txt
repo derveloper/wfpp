@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 project(wfpp C CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -ldl")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wconversion -std=c++14")
 set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wconversion -std=gnu11")
 set(CMAKE_C_COMPILER "/usr/bin/clang")
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
@@ -36,7 +36,7 @@ set(LWAN_SOURCES
 	${LWAN_INC_PATH}/strbuf.c
 	${LWAN_INC_PATH}/murmur3.c
 )
-set(SOURCE_FILES ${LWAN_SOURCES} main.cpp application.h)
+set(SOURCE_FILES main.cpp application.h)
 
 include(FindPkgConfig)
 
@@ -108,17 +108,10 @@ find_package(ZLIB REQUIRED)
 
 add_executable(wfpp ${SOURCE_FILES})
 
-add_custom_command(
-	OUTPUT ${CMAKE_BINARY_DIR}/mime-types.h
-	COMMAND ${PYTHON_EXECUTABLE} ${LWAN_PATH}/tools/generate-mime-types-table.py ${LWAN_PATH}/tools/mime.types > ${CMAKE_BINARY_DIR}/mime-types.h
-	DEPENDS ${LWAN_PATH}/tools/mime.types ${LWAN_PATH}/tools/generate-mime-types-table.py
-)
-add_custom_target(generate_mime_types_table DEPENDS ${CMAKE_BINARY_DIR}/mime-types.h)
-add_dependencies(wfpp generate_mime_types_table)
 include_directories(${CMAKE_BINARY_DIR})
 
 include_directories(/usr/include ${LWAN_INC_PATH} ${LWAN_PATH}/tools)
 link_directories(${LWAN_BUILD_PATH}/common)
 
-target_link_libraries(wfpp pthread ${ZLIB_LIBRARIES} ${ADDITIONAL_LIBRARIES} ${LUA_LIBRARIES})
+target_link_libraries(wfpp pthread dl ${LWAN_BUILD_PATH}/common/liblwan-common.a ${ZLIB_LIBRARIES} ${ADDITIONAL_LIBRARIES} ${LUA_LIBRARIES})
 
