@@ -12,6 +12,7 @@
 #include <map>
 #include <iostream>
 #include <functional>
+#include <mutex>
 
 #include "ext/json.hpp"
 
@@ -24,6 +25,8 @@ namespace wfpp {
     using json = nlohmann::json;
     using view_data = json;
     using view_object = json;
+
+    std::mutex mutex;
 
     struct response {
         lwan_response_t *lwan_response;
@@ -60,7 +63,14 @@ namespace wfpp {
             using lwan_handler_t = lwan_http_status_t (*)(lwan_request_t *, lwan_response_t *, void *);
             lwan_handler_t lwan_handler = [](lwan_request_t *req, lwan_response_t *res, void *data)
                     -> lwan_http_status_t {
-                return _h(req, std::move(response(res)), data);
+
+                mutex.lock();
+
+                auto status = _h(req, std::move(response(res)), data);
+
+                mutex.unlock();
+
+                return status;
             };
             url_map.push_back((lwan_url_map_t) {.prefix = (char *) route, .handler = lwan_handler});
         }

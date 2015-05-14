@@ -39,6 +39,25 @@ set(LWAN_SOURCES
 set(SOURCE_FILES main.cpp application.h)
 
 include(FindPkgConfig)
+foreach (pc_file luajit lua lua lua51 lua5.1 lua-5.1)
+	if (${pc_file} STREQUAL "luajit")
+		pkg_check_modules(LUA luajit>=2.0 luajit<=2.0.9999)
+	else ()
+		pkg_check_modules(LUA ${pc_file}>=5.1.0 ${pc_file}<=5.1.999)
+	endif ()
+        if (LUA_FOUND)
+		list(APPEND ADDITIONAL_LIBRARIES ${LUA_LIBRARIES})
+		list(APPEND SOURCES lwan-lua.c)
+		include_directories(${LUA_INCLUDE_DIRS})
+		add_definitions(-DHAVE_LUA)
+		break()
+        endif()
+endforeach ()
+if (NOT LUA_FOUND)
+	message(STATUS "Disabling Lua support")
+else ()
+	message(STATUS "Building with Lua support using ${LUA_LIBRARIES}")
+endif ()
 
 include(CheckFunctionExists)
 set(CMAKE_EXTRA_INCLUDE_FILES time.h)
@@ -108,10 +127,12 @@ find_package(ZLIB REQUIRED)
 
 add_executable(wfpp ${SOURCE_FILES})
 
-include_directories(${CMAKE_BINARY_DIR})
+find_package(Boost 1.57.0 COMPONENTS filesystem system)
+
+include_directories(${CMAKE_BINARY_DIR} ${Boost_INCLUDE_DIRS})
 
 include_directories(/usr/include ${LWAN_INC_PATH} ${LWAN_PATH}/tools)
 link_directories(${LWAN_BUILD_PATH}/common)
 
-target_link_libraries(wfpp pthread dl ${LWAN_BUILD_PATH}/common/liblwan-common.a ${ZLIB_LIBRARIES} ${ADDITIONAL_LIBRARIES} ${LUA_LIBRARIES})
+target_link_libraries(wfpp pthread dl ${Boost_LIBRARIES} ${LWAN_BUILD_PATH}/common/liblwan-common.a ${ZLIB_LIBRARIES} ${ADDITIONAL_LIBRARIES} ${LUA_LIBRARIES})
 
