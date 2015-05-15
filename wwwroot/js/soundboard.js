@@ -1,9 +1,7 @@
 var soundboardApp = angular.module('soundboardApp', ['soundboardServices']);
 
 soundboardApp.controller('FileListCtrl', function ($scope, Soundboard) {
-    Soundboard.files(function(files) {
-        $scope.files = files;
-    });
+    $scope.files = Soundboard.files();
 });
 
 var soundboardServices = angular.module('soundboardServices', ['ngResource']);
